@@ -73,7 +73,11 @@ vMin = para(2);
 kJam = para(3);
 a = para(4);
 b = para(5);
-velEql = vMin + (vMax - vMin)*(1-(K/kJam).^a).^b;
+if K<=kJam
+    velEql = vMin + (vMax - vMin)*(1-(K/kJam).^a).^b;
+else
+    velEql = 0;
+end
 end
 
 function Vf = CF(space,Vl,para)

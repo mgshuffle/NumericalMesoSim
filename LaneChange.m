@@ -44,7 +44,11 @@ for k = 1:length(uniCIdx)
             IdxOFIdx = max(ceil(rand*length(theCell)),1);
             LCIdx = theCell(IdxOFIdx);
             
-            Pr = max(0,(thisVehCount-vehCount1)/(head-tail)/DenMax);
+            CountMax = ceil((head-tail)*DenMax);
+            if CountMax<1
+                error('too short');
+            end
+            Pr = max( 0, (thisVehCount-(vehCount1+1))/ceil((head-tail)*DenMax) );
             if rand<Pr%Lane Changed
                 vehicle(LCIdx,9) = frameBuff;
                 vehCount1 = vehCount1 + 1;
@@ -81,7 +85,7 @@ for k = 1:length(uniCIdx)
                 vehicle = [vehicle;newVirVeh];
                 
             else%trying the other Lane
-                Pr2 = (thisVehCount-vehCount2)/(head-tail)/DenMax;
+                Pr2 = max( 0, (thisVehCount-(vehCount2+1))/ceil((head-tail)*DenMax) );
                 if rand<Pr2%the other Lane Changed
                     vehicle(LCIdx,9) = frameBuff;
                     vehCount2 = vehCount2 + 1;

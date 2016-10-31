@@ -43,10 +43,10 @@ for i = 0:1000%frame loop
 		%
 		[CellIdx,~,~,~]=CellCut(vehicle);
 		%
-		vehicle = MESO(vehicle,CellIdx,linkLen,simStep);
+		vehicle = MESO(vehicle,CellIdx,linkLen,simStep);%move in a frame (movement from t=i to t=i+1)
 		
 		%
-		record = [record;[vehicle i*simStep*ones(length(vehicle(:,1)),1)]];
+		record = [record;[vehicle (i+1)*simStep*ones(length(vehicle(:,1)),1)]];
 	end
 
 end
