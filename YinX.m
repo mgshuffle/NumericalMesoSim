@@ -3,4 +3,7 @@ function [idx] = YinX(x, y)
 	[xx, yy] = meshgrid(x, y);
 	[row, ~] = find(xx-yy==0);
 	idx = row;
+	if length(idx)~=length(x)
+		error('vehs do not match!');
+	end
 end

@@ -30,6 +30,7 @@ end
 end
 
 function [VelState, HwState]=StateDetect(vehicle)
-VelState = floor(vehicle(:,5)/2) + 1;
-HwState = ~(vehicle(:,11)>5);
+%VelState = floor(vehicle(:,5)/2) + 1;
+VelState = ones(length(vehicle(:,1)),1);
+HwState = vehicle(:,11)<=5;
 end
