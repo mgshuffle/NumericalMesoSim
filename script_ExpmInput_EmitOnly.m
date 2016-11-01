@@ -5,7 +5,7 @@ Frame_ID=data(:,2);
 Local_Y=data(:,6);
 v_Class=data(:,11);
 
-%LocalY ä¸èƒ½æœ‰å?é€?‚¹
+%LocalY 
 s = testBackward(data);
 if s>0 
     warning('backward warning');

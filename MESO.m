@@ -38,20 +38,26 @@ vehicle(:,4:5)=[newPos newVel];
 vehicle(:,9)=max(0,vehicle(:,9)-1);
 
 %flag the arrived veh and mark corresponding followingVeh as nonLeadingVeh
-vehicle(newPos>=linkLen,2)=1;
-renewFVID = vehicle(newPos>=linkLen,7);
-renewFVID = renewFVID(renewFVID~=0);
-vehicle(YinX(renewFVID,vehicle(:,1)),6)=0;
+%vehicle(newPos>=linkLen,2)=1;
+%renewFVID = vehicle(newPos>=linkLen,7);
+%renewFVID = renewFVID(renewFVID~=0);
+%vehicle(YinX(renewFVID,vehicle(:,1)),6)=0;
+flagArrival = find(newPos>=linkLen);
+vehicle(flagArrival,2)=1;
+vehicle=rmFlag(vehicle,flagArrival);
+
 %find the dead virtualVehs and mark corresponding followingVehs and leadingVehs
+%deadVehIdx = find(vehicle(:,8)&~vehicle(:,9));
+%LVID = vehicle(deadVehIdx,6);
+%LVID = LVID(LVID~=0);
+%subLVehIdx = deadVehIdx(LVID~=0);
+%vehicle(YinX(LVID,vehicle(:,1)),7)=vehicle(subLVehIdx,7);
+%FVID = vehicle(deadVehIdx,7);
+%FVID = FVID(FVID~=0);
+%subFVehIdx = deadVehIdx(FVID~=0);
+%vehicle(YinX(FVID,vehicle(:,1)),6)=vehicle(subFVehIdx,6);
 deadVehIdx = find(vehicle(:,8)&~vehicle(:,9));
-LVID = vehicle(deadVehIdx,6);
-LVID = LVID(LVID~=0);
-subLVehIdx = deadVehIdx(LVID~=0);
-vehicle(YinX(LVID,vehicle(:,1)),7)=vehicle(subLVehIdx,7);
-FVID = vehicle(deadVehIdx,7);
-FVID = FVID(FVID~=0);
-subFVehIdx = deadVehIdx(FVID~=0);
-vehicle(YinX(FVID,vehicle(:,1)),6)=vehicle(subFVehIdx,6);
+vehicle=rmFlag(vehicle,deadVehIdx);
 
 %remove arrival vehs
 vehicle(vehicle(:,2)==1,:)=[];
