@@ -5,6 +5,7 @@
 simStep = 0.1; %s
 tBuff = 2; %s
 linkLen = 500;%m
+VelPass = 20/3.6;%m/s
 
 %initial
 load('emitTable')%format: #1_time #2_vel(m/s) #3_laneID
@@ -43,7 +44,7 @@ for i = 0:1000%frame loop
 		%
 		[CellIdx,~,~,~]=CellCut(vehicle);
 		%
-		vehicle = MESO(vehicle,CellIdx,linkLen,simStep);%move in a frame (movement from t=i to t=i+1)
+		vehicle = MESO(vehicle,CellIdx,linkLen,simStep,VelPass);%move in a frame (movement from t=i to t=i+1)
 		
 		%
 		record = [record;[vehicle (i+1)*simStep*ones(length(vehicle(:,1)),1)]];

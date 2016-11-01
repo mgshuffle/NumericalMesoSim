@@ -46,12 +46,10 @@ vehicle(YinX(renewFVID,vehicle(:,1)),6)=0;
 deadVehIdx = find(vehicle(:,8)&~vehicle(:,9));
 LVID = vehicle(deadVehIdx,6);
 LVID = LVID(LVID~=0);
-subLVehIdx = deadVehIdx(LVID~=0);
-vehicle(YinX(LVID,vehicle(:,1)),7)=vehicle(subLVehIdx,7);
+vehicle(YinX(LVID,vehicle(:,1)),7)=vehicle(deadVehIdx,7);
 FVID = vehicle(deadVehIdx,7);
 FVID = FVID(FVID~=0);
-subFVehIdx = deadVehIdx(FVID~=0);
-vehicle(YinX(FVID,vehicle(:,1)),6)=vehicle(subFVehIdx,6);
+vehicle(YinX(FVID,vehicle(:,1)),6)=vehicle(deadVehIdx,6);
 
 %remove arrival vehs
 vehicle(vehicle(:,2)==1,:)=[];
