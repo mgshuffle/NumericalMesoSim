@@ -42,9 +42,6 @@ vehicle(:,9)=max(0,vehicle(:,9)-1);
 %renewFVID = vehicle(newPos>=linkLen,7);
 %renewFVID = renewFVID(renewFVID~=0);
 %vehicle(YinX(renewFVID,vehicle(:,1)),6)=0;
-flagArrival = find(newPos>=linkLen);
-vehicle(flagArrival,2)=1;
-vehicle=rmFlag(vehicle,flagArrival);
 
 %find the dead virtualVehs and mark corresponding followingVehs and leadingVehs
 %deadVehIdx = find(vehicle(:,8)&~vehicle(:,9));
@@ -56,16 +53,42 @@ vehicle=rmFlag(vehicle,flagArrival);
 %FVID = FVID(FVID~=0);
 %subFVehIdx = deadVehIdx(FVID~=0);
 %vehicle(YinX(FVID,vehicle(:,1)),6)=vehicle(subFVehIdx,6);
-deadVehIdx = find(vehicle(:,8)&~vehicle(:,9));
-vehicle=rmFlag(vehicle,deadVehIdx);
 
+
+arrivalIdx = find(newPos>=linkLen);
+if ~isempty(arrivalIdx)
+    vehicle(arrivalIdx,2)=1;
+    vehicle=rmFlag(vehicle,arrivalIdx);
+end
 %remove arrival vehs
 vehicle(vehicle(:,2)==1,:)=[];
+
+deadVehIdx = find(vehicle(:,8)&~vehicle(:,9));
+if ~isempty(deadVehIdx)
+    vehicle=rmFlag(vehicle,deadVehIdx);
+end
 %remove dead virtualVehs
 vehicle(vehicle(:,8)&~vehicle(:,9),:)=[];
 
+% arrivalIdx = find(newPos>=linkLen);
+% vehicle(arrivalIdx,2)=1;
+% deadVehIdx = find(vehicle(:,8)&~vehicle(:,9));
+% goneIdx = union(arrivalIdx,deadVehIdx);
+% if ~isempty(goneIdx)
+%     vehicle = rmFlag(vehicle,deadVehIdx);
+% end
+
+
+
+
+
 %update space and headway
 fVehsIdx = find(vehicle(:,6)~=0);%follow = leading veh is not null
+%debug
+wrongVehs = setdiff(vehicle(fVehsIdx,6),vehicle(:,1));
+if ~isempty(wrongVehs)
+    disp(vehicle(YinX(wrongVehs,vehicle(:,6)),:));
+end
 lVehIdx = YinX(vehicle(fVehsIdx,6),vehicle(:,1));
 vehicle(fVehsIdx,10) = vehicle(lVehIdx,4)-vehicle(fVehsIdx,4);
 nonIdx = find(vehicle(:,6)==0);

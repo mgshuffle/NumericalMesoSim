@@ -46,6 +46,29 @@ for i = 0:1000%frame loop
 		%
 		vehicle = MESO(vehicle,CellIdx,linkLen,simStep,VelPass);%move in a frame (movement from t=i to t=i+1)
 		
+        %debug
+        leading = vehicle(:,6);
+        leading = leading(leading~=0);
+        unileading = unique(leading);
+        if length(unileading)~=length(leading)
+            %warning('following same veh')
+            a = hist(leading,unileading);
+            disp('重复车');
+            disp(unileading(a>1))
+            disp('冲突车');
+            disp(vehicle(YinX(unileading(a>1),vehicle(:,6)),[1 8 9]))            
+        end
+        following = vehicle(:,7);
+        following = following(following~=0);
+        unifollowing = unique(following);
+        if length(unifollowing)~=length(following)
+            b = hist(following,unifollowing);
+            disp('重复车');
+            disp(unifollowing(b>1))
+            disp('冲突车')
+            disp(vehicle(YinX(unifollowing(b>1),vehicle(:,7)),[1 8 9]))
+        end
+        
 		%
 		record = [record;[vehicle (i+1)*simStep*ones(length(vehicle(:,1)),1)]];
 	end
