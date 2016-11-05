@@ -9,7 +9,7 @@ DenMax = 1/6;%veh/meter
 for k = 1:length(uniCIdx)
     theCell = find(CellIdx==uniCIdx(k));
     theCell = theCell(vehicle(theCell,8)~=1);%
-    theCell = theCell(vehicle(theCell,9)==0);%
+    theCell = theCell(vehicle(theCell,9)==0);%can be combined
     if ~isempty(theCell)
         tmpIdx = theCell(vehicle(theCell,4)==max(vehicle(theCell,4)));
         theLaneID = vehicle(theCell(1),3);
