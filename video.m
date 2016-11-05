@@ -1,13 +1,15 @@
+load('result20161104')
 a=1;
 b=1000;
 
 feet2meter = 0.3048;
 FRAME = record(:,12)*10;
 
-myVideo = VideoWriter('record2.mp4','MPEG-4');
+myVideo = VideoWriter('record.mp4','MPEG-4');
 myVideo.FrameRate = 20; %default 30
-myVideo.Quality = 30; %defaulet 100
+myVideo.Quality = 50; %defaulet 100
 open(myVideo);
+
 gcf = figure('Position', [100, 100, 1000, 190]);
 for i=a:b
     %draw network   
@@ -19,10 +21,9 @@ for i=a:b
     end
     
     %draw vehs
-    t=find(FRAME==i);
+    t=find(abs(FRAME-i)<1e-3);
     if ~isempty(t)
         allVeh = record(t,1:11);
-        disp(length(allVeh(:,1)))
         idxReal = find(allVeh(:,8)==0);
         idxVirtual = setdiff((1:length(t))',idxReal);
         plot(allVeh(idxReal,4),(6-allVeh(idxReal,3)*12)*feet2meter,'ob')
@@ -36,4 +37,5 @@ for i=a:b
     
     clf
 end
+
 close(myVideo);

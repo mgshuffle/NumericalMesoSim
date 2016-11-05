@@ -1,5 +1,8 @@
 %vehicle: #1_VID #2_State(arrived==1) #3_laneID #4_S #5_Vel #6_leading #7_following #8_type(virtual==1) #9_(adjust_time_)remain(>=0) #10_space #11_headway
-%record: #1_VID #2_State(arrived==1) #3_laneID #4_S #5_Vel #6_leading #7_following #8_type(virtual==1) #9_(adjust_time_)remain(>=0) #10_space #11_headway #12_FID
+%record: #1_VID #2_State(arrived==1) #3_laneID #4_S #5_Vel #6_leading #7_following #8_type(virtual==1) #9_(adjust_time_)remain(>=0) #10_space #11_headway #12_Time
+header = {'VID','State','laneID','S','Vel','leading','following','type','remain','space','headway','Time'};
+fmtString = [repmat('%s,',1,length(header)-1) '%s\r\n'];
+fmtNum = [repmat('%g,',1,length(header)-1) '%g\r\n'];
 
 %parameters setting
 simStep = 0.1; %s
@@ -14,6 +17,12 @@ vehicle = zeros(0,11);
 record = zeros(0,12);
 vehCount = 0;
 frameBuff = ceil(tBuff/simStep);
+
+%output
+outfile = './record.csv';
+fileID = fopen(outfile, 'w');
+%if fid == -1; error('Cannot open file: %s', outfile); end
+fprintf(fileID, fmtString, header{:});
 
 for i = 0:1000%frame loop
 	%
@@ -55,8 +64,8 @@ for i = 0:1000%frame loop
             a = hist(leading,unileading);
             disp('重复车');
             disp(unileading(a>1))
-            disp('冲突车');
-            disp(vehicle(YinX(unileading(a>1),vehicle(:,6)),[1 8 9]))            
+%             disp('冲突车');
+%             disp(vehicle(YinX(unileading(a>1),vehicle(:,6)),[1 8 9]))            
         end
         following = vehicle(:,7);
         following = following(following~=0);
@@ -65,12 +74,22 @@ for i = 0:1000%frame loop
             b = hist(following,unifollowing);
             disp('重复车');
             disp(unifollowing(b>1))
-            disp('冲突车')
-            disp(vehicle(YinX(unifollowing(b>1),vehicle(:,7)),[1 8 9]))
+%             disp('冲突车')
+%             disp(vehicle(YinX(unifollowing(b>1),vehicle(:,7)),[1 8 9]))
         end
         
 		%
 		record = [record;[vehicle (i+1)*simStep*ones(length(vehicle(:,1)),1)]];
+        if length(record(:,1))>1e5
+            fprintf(fileID, fmtNum, record);
+            record = [];
+        end
+        
 	end
 
 end
+
+if ~isempty(record)
+    fprintf(fileID, fmtNum, record);
+end
+fclose(fileID);

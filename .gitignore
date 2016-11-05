@@ -47,6 +47,7 @@ Temporary Items
 .apdisk
 *.mat
 *.csv
+*.dat
 *.xlsx
 *.asv
 *.avi

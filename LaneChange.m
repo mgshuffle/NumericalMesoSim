@@ -43,6 +43,7 @@ for k = 1:length(uniCIdx)
         while length(theCell)>=1
             IdxOFIdx = max(ceil(rand*length(theCell)),1);
             LCIdx = theCell(IdxOFIdx);
+            LCVID = vehicle(LCIdx,1);
             
             CountMax = ceil((head-tail)*DenMax);
             if CountMax<1
@@ -50,76 +51,84 @@ for k = 1:length(uniCIdx)
             end
             Pr = max( 0, (thisVehCount-(vehCount1+1))/ceil((head-tail)*DenMax) );
             if rand<Pr%Lane Changed
-                vehicle(LCIdx,9) = frameBuff;
                 vehCount1 = vehCount1 + 1;
                 totVehCount = totVehCount + 1;
-                newVirVeh = vehicle(LCIdx,:);
-                newVirVeh([1 3 8 9]) = [totVehCount theLaneID+firstTurn 1 frameBuff];
+                
+                vehicle(LCIdx,[1 8 9]) = [totVehCount 1 frameBuff];
+                vehicle(vehicle(:,6)==LCVID,6) = totVehCount;
+                vehicle(vehicle(:,7)==LCVID,7) = totVehCount;
+                
+                newPosVeh = vehicle(LCIdx,:);
+                newPosVeh([1 3 8 9]) = [LCVID theLaneID+firstTurn 0 frameBuff];
                 idx_tgs = find(vehicle(:,3)==theLaneID+firstTurn);
                 
                 idx_tgs_front = idx_tgs(vehicle(idx_tgs,4)>vehicle(LCIdx,4));
                 idx_tgs_rear = idx_tgs(vehicle(idx_tgs,4)<=vehicle(LCIdx,4));
                 
                 if isempty(idx_tgs_front)
-                    newVirVeh(6)=0;
-                    newVirVeh(10) = linkLen - newVirVeh(4);
+                    newPosVeh(6)=0;
+                    newPosVeh(10) = linkLen - newPosVeh(4);
                 else
                     [~,tmp] = min(vehicle(idx_tgs_front,4));
                     idx_front = idx_tgs_front(tmp);
-                    newVirVeh(6) = vehicle(idx_front,1);
-                    vehicle(idx_front,7) = newVirVeh(1);
-                    newVirVeh(10) = vehicle(idx_front,4) - newVirVeh(4);
+                    newPosVeh(6) = vehicle(idx_front,1);
+                    vehicle(idx_front,7) = newPosVeh(1);
+                    newPosVeh(10) = vehicle(idx_front,4) - newPosVeh(4);
                 end
-                newVirVeh(11) = newVirVeh(10)/newVirVeh(5);
+                newPosVeh(11) = newPosVeh(10)/newPosVeh(5);
                 
                 if isempty(idx_tgs_rear)
-                    newVirVeh(7)=0;
+                    newPosVeh(7)=0;
                 else
                     [~,tmp] = max(vehicle(idx_tgs_rear,4));
                     idx_rear = idx_tgs_rear(tmp);
-                    newVirVeh(7) = vehicle(idx_rear,1);
-                    vehicle(idx_rear,6) = newVirVeh(1);
-                    vehicle(idx_rear,10) = newVirVeh(4)-vehicle(idx_rear,4);
+                    newPosVeh(7) = vehicle(idx_rear,1);
+                    vehicle(idx_rear,6) = newPosVeh(1);
+                    vehicle(idx_rear,10) = newPosVeh(4)-vehicle(idx_rear,4);
                     vehicle(idx_rear,11) = vehicle(idx_rear,10) / vehicle(idx_rear,5);
                 end
-                vehicle = [vehicle;newVirVeh];
+                vehicle = [vehicle;newPosVeh];
                 
             else%trying the other Lane
                 Pr2 = max( 0, (thisVehCount-(vehCount2+1))/ceil((head-tail)*DenMax) );
                 if rand<Pr2%the other Lane Changed
-                    vehicle(LCIdx,9) = frameBuff;
                     vehCount2 = vehCount2 + 1;
                     totVehCount = totVehCount + 1;
-                    newVirVeh = vehicle(LCIdx,:);
-                    newVirVeh([1 3 8 9]) = [totVehCount theLaneID-firstTurn 1 frameBuff];
+                    
+                    vehicle(LCIdx,[1 8 9]) = [totVehCount 1 frameBuff];
+                    vehicle(vehicle(:,6)==LCVID,6) = totVehCount;
+                    vehicle(vehicle(:,7)==LCVID,7) = totVehCount;
+                    
+                    newPosVeh = vehicle(LCIdx,:);
+                    newPosVeh([1 3 8 9]) = [LCVID theLaneID-firstTurn 0 frameBuff];
                     idx_tgs = find(vehicle(:,3)==theLaneID-firstTurn);
                     
                     idx_tgs_front = idx_tgs(vehicle(idx_tgs,4)>vehicle(LCIdx,4));
                     idx_tgs_rear = idx_tgs(vehicle(idx_tgs,4)<=vehicle(LCIdx,4));
                     
                     if isempty(idx_tgs_front)
-                        newVirVeh(6)=0;
-                        newVirVeh(10) = linkLen - newVirVeh(4);
+                        newPosVeh(6)=0;
+                        newPosVeh(10) = linkLen - newPosVeh(4);
                     else
                         [~,tmp] = min(vehicle(idx_tgs_front,4));
                         idx_front = idx_tgs_front(tmp);
-                        newVirVeh(6) = vehicle(idx_front,1);
-                        vehicle(idx_front,7) = newVirVeh(1);
-                        newVirVeh(10) = vehicle(idx_front,4) - newVirVeh(4);
+                        newPosVeh(6) = vehicle(idx_front,1);
+                        vehicle(idx_front,7) = newPosVeh(1);
+                        newPosVeh(10) = vehicle(idx_front,4) - newPosVeh(4);
                     end
-                    newVirVeh(11) = newVirVeh(10)/newVirVeh(5);
+                    newPosVeh(11) = newPosVeh(10)/newPosVeh(5);
                     
                     if isempty(idx_tgs_rear)
-                        newVirVeh(7)=0;
+                        newPosVeh(7)=0;
                     else
                         [~,tmp] = max(vehicle(idx_tgs_rear,4));
                         idx_rear = idx_tgs_rear(tmp);
-                        newVirVeh(7) = vehicle(idx_rear,1);
-                        vehicle(idx_rear,6) = newVirVeh(1);
-                        vehicle(idx_rear,10) = newVirVeh(4)-vehicle(idx_rear,4);
+                        newPosVeh(7) = vehicle(idx_rear,1);
+                        vehicle(idx_rear,6) = newPosVeh(1);
+                        vehicle(idx_rear,10) = newPosVeh(4)-vehicle(idx_rear,4);
                         vehicle(idx_rear,11) = vehicle(idx_rear,10) / vehicle(idx_rear,5);
                     end
-                    vehicle = [vehicle;newVirVeh];
+                    vehicle = [vehicle;newPosVeh];
                 end
             end
             
