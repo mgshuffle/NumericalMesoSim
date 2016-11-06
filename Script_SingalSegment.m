@@ -11,12 +11,15 @@ linkLen = 500;%m
 VelPass = 20/3.6;%m/s
 
 %initial
-load('emitTable')%format: #1_time #2_vel(m/s) #3_laneID
 laneCount = 6; 
 vehicle = zeros(0,11);
 record = zeros(0,12);
 vehCount = 0;
 frameBuff = ceil(tBuff/simStep);
+%load('emitTable')%format: #1_time #2_vel(m/s) #3_laneID
+ODList = [1 1000 0 3600];
+vlim = [5 15];
+emitTable = emitTableGenerater(ODList,vlim,laneCount);
 
 %output
 outfile = './record.csv';
