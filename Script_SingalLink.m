@@ -1,4 +1,4 @@
-%vehicle: #1_VID #2_State(arrived==1) #3_laneID #4_S #5_Vel #6_leading #7_following #8_type(virtual==1) #9_(adjust_time_)remain(>=0) #10_space #11_headway
+%vehicle: #1_VID #2_State(arrived==1) #3_laneID #4_S #5_Vel #6_leading #7_following #8_type(virtual>0) #9_(adjust_time_)remain(>=0) #10_space #11_headway
 %record: #1_VID #2_State(arrived==1) #3_laneID #4_S #5_Vel #6_leading
 %#7_following #8_type(virtual==1) #9_(adjust_time_)remain(>=0) #10_space
 %#11_headway #12_Time #13_FID
@@ -18,30 +18,40 @@
 % fmtMat = [repmat('%G,',1,length(header)-1) '%G\r\n'];
 % %-----------------------------output setting-----------------------------
 
-global emitTime
-global currentTime
-global capacity
-%---------------------parameters setting----------------------------
-mode = 1;
+global simStep
+global duriation
+global tBuff
+global linkLen
+global ODList
+global vlim
+global VelPass
+global leff
+global DenMax
+global capacity %perlane persec
 
+global frameBuff
+global laneList
+global linkGraph
+global currentTime
+global ETT
+
+global crashTimes
+%---------------------parameters setting----------------------------
 simStep = 0.1; %s
-duriation = 900; %s
+ETStep = 10;
+LCStep = 1;
+duriation = 3600; %s
 tBuff = 2; %s
 
-linkLen = 300;%m
-laneCount = 6;
+linkLen = 600;%m
 
-capacity = 0.5*laneCount;%veh/s
+ODList = [1 10000 0 3600];%1#ODID 2#demand 3#start 4#end
 
-emitTime = 0;
-ETStep = 10;
-
-ODList = [1 3000 0 1800; 1 5000 1800 3600];%1#ODID 2#demand 3#start 4#end
-
-vlim = [5 17];%initial vel limit
+vlim = [5 15];%initial vel limit
 VelPass = 20/3.6;%m/s
-DenMax = 1/6;%veh/meter
+capacity = 0.5;
 leff = 6;%m
+DenMax = 1/leff;%veh/meter
 
 RCMax = 1e6;
 %---------------------parameters setting----------------------------
@@ -49,6 +59,8 @@ RCMax = 1e6;
 
 %---------------------------initial-----------------------------------
 vehicle = zeros(0,11);
+D = cell(0,1);
+nextLane = zeros(0,1);
 record = zeros(RCMax,13);
 recordCount = 0;
 patchID = 1;
@@ -56,30 +68,33 @@ vehCount = 0;
 frameBuff = ceil(tBuff/simStep);
 
 ETClock = ETStep;
+LCClock = LCStep;
 emitVCount = 0;
 
-if mode == 1
+crashTimes = 0;
+
+%get network
+[laneList,linkGraph,ETT] = NetworkGenerater();
 %get emitTable
-load('emitTable')%format: #1_time #2_vel(m/s) #3_laneID
-load('vehicle')
-vehCount = length(vehicle(:,1));
-else
-    %get emitTable
-    emitTable = emitTableGeneraterR(ODList,vlim,laneCount,simStep);
-end
+%load('emitTable')%format: #1_time #2_vel(m/s) #3_laneID
+[emitTable,emitD] = emitTableGenerater2(ODList,vlim,laneList);
 %---------------------------initial-----------------------------------
-
-
 
 
 for i = 0:ceil(duriation/simStep)%frame loop
     currentTime = i*simStep;
+    
+%     %debug
+%     if mod(currentTime,20)==0
+%     end
     %
     while(~isempty(emitTable) && i*simStep>=emitTable(1,1))
         
         vehCount = vehCount + 1;
-        
-        lastVehIdx = find(vehicle(:,3)==emitTable(1,3)&vehicle(:,7)==0);
+        thisLane = vehicle(:,3);
+        [IY,IX] = YinX2(laneList(:,1),thisLane);
+        thisLane(IY)=IX;
+        lastVehIdx = find(laneList(thisLane,4)==laneList(laneList(:,1)==emitTable(1,3),4)&vehicle(:,7)==0);
         if ~isempty(lastVehIdx)
             if vehicle(lastVehIdx,4)<=leff%too close
                 newVeh = [];
@@ -90,36 +105,48 @@ for i = 0:ceil(duriation/simStep)%frame loop
                 newVeh = [vehCount 0 emitTable(1,3) 0 emitTable(1,2) ...
                     vehicle(lastVehIdx,1) 0 0 0 vehicle(lastVehIdx,4) vehicle(lastVehIdx,4)/emitTable(1,2)];
             end
-%             emitVCount = emitVCount + 1;
-%             vehicle(lastVehIdx,7) = vehCount;
-%             newVeh = [vehCount 0 emitTable(1,3) 0 emitTable(1,2) ...
-%                       vehicle(lastVehIdx,1) 0 0 0 vehicle(lastVehIdx,4) vehicle(lastVehIdx,4)/emitTable(1,2)];
         else%leading VEH GONE ALREADY
             newVeh = [vehCount 0 emitTable(1,3) 0 emitTable(1,2) ...
                 0 0 0 0 linkLen linkLen/emitTable(1,2)];
         end
         
-        vehicle = [vehicle;newVeh];
+        if ~isempty(newVeh)
+            vehicle = [vehicle;newVeh];
+            D{length(D)+1} = emitD{1};
+            nextLane = [nextLane; GetNextLane(find(laneList(:,1)==newVeh(3)),D{length(D)},linkGraph)];
+        end
         
         emitTable(1,:) = [];%remove veh emitted
+        emitD(1) = [];
     end
     
     %reset emitTime
     if currentTime>=ETClock
-        emitTime = i*simStep;
+        ETT(:,3) = currentTime;
         ETClock = ETClock + ETStep;
     end
     
     if ~isempty(vehicle)
-        %
+        %车队识别
         [CellIdx,~,~,~]=CellCut(vehicle);
-        %
-        [vehicle,vehCount] = LaneChange(vehicle,CellIdx,laneCount,frameBuff,vehCount,linkLen);
-        %
-        [CellIdx,~,~,~]=CellCut(vehicle);
-        %
-        vehicle = MESO(vehicle,CellIdx,linkLen,simStep,VelPass);%move in a frame (movement from t=i to t=i+1)
-        
+        if currentTime>=LCClock
+            LCClock = LCClock + LCStep;
+            %换道过程
+            [vehicle,D,nextLane,vehCount] = LaneChange4(vehicle,D,nextLane,vehCount,CellIdx);
+            %debug
+            IDX = crashTest(vehicle);
+            if ~isempty(IDX)
+            end
+            %车队重识别
+            [CellIdx,~,~,~]=CellCut(vehicle);
+        end
+        %move in a frame (movement from t=i to t=i+1)
+        [vehicle,D,nextLane] = MESO4(vehicle,D,nextLane,CellIdx);
+        %debug
+        IDX = crashTest(vehicle);
+        if ~isempty(IDX)
+        end
+
         %debug
         leading = vehicle(:,6);
         leading = leading(leading~=0);
@@ -127,18 +154,14 @@ for i = 0:ceil(duriation/simStep)%frame loop
         if length(unileading)~=length(leading)
             %warning('following same veh')
             a = hist(leading,unileading);
-            disp('重复车');
             disp(unileading(a>1))
-            error('重复车');
         end
         following = vehicle(:,7);
         following = following(following~=0);
         unifollowing = unique(following);
         if length(unifollowing)~=length(following)
             b = hist(following,unifollowing);
-            disp('重复车');
             disp(unifollowing(b>1))
-            error('重复车');
         end
         
         %add record
@@ -155,30 +178,12 @@ for i = 0:ceil(duriation/simStep)%frame loop
         %vehs in one frame must not more than RCMax
         record(recordCount+1:recordCount+num2add,:) = [vehicle (i+1)*simStep*ones(num2add,1) (i+1)*ones(num2add,1)];
         recordCount = recordCount + num2add;
-        
-%         %output
-%         for v = 1:length(vehicle(:,1))
-%             fprintf(fileID2,fmtMat,[vehicle(v,:) (i+1)*simStep i+1]);
-%         end
     
     end
-    
-%     %debug density
-%     frVehNum = length(find(vehicle(:,8)~=0));
-%     if frVehNum/linkLen/laneCount>DenMax
-%         error('exceed Global maximum density')
-%     end
-%     closeIdx = find(vehicle(:,6)~=0&vehicle(:,10)<leff);
-%     if ~isempty(closeIdx)
-%         error('too close')
-%     end
 
     disp(i*simStep)
     
 end
-
-% %output
-% fclose(fileID2);
 
 if recordCount>0
     data = record(1:recordCount,:);

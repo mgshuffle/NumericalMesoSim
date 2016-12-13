@@ -1,19 +1,17 @@
 %vehicle: #1_VID #2_State(arrived==1) #3_laneID #4_S #5_Vel #6_leading #7_following #8_type(virtual==1) #9_(adjust_time_)remain(>=0) #10_space #11_headway
-function vehicle = MESO(vehicle,CellIdx,linkLen,simStep,VelPass)
-
-global emitTime
-global currentTime
-global capacity
+function [vehicle,D,nextLane] = MESO2(vehicle,D,CellIdx,linkLen,simStep,VelPass,laneList,nextLane,linkGraph)
 
 %SDFpara=[50/3.6,15.6946188969802/3.6,114.313208506104/1000,2.21680315505852,9.98014217655979];%i80-2
-%SDFpara=[50/3.6,0,114.313208506104/1000,2.21680315505852,9.98014217655979];%i80-2
-SDFpara = [17,0,0.180,1.8,5];
-CFPara=[17,91.44];
+SDFpara=[50/3.6,0,114.313208506104/1000,2.21680315505852,9.98014217655979];%i80-2
+CFPara=[50/3.6,180];
 leff = 6;
 
 %initial
 newVel = zeros(length(vehicle(:,1)),1);
 newPos = zeros(size(newVel));
+thisLane = vehicle(:,3);
+[IY,IX] = YinX2(laneList(:,1),thisLane);
+thisLane(IY) = IX;
 
 %update vel and pos
 [uniCIdx,~] = unique(CellIdx);
@@ -28,15 +26,8 @@ for i = 1:length(uniCIdx)
         leadingIdx = find(vehicle(:,1)==vehicle(tmpIdx,6));
         headVel = CF(vehicle(tmpIdx,10),vehicle(leadingIdx,5),CFPara,simStep,leff);
     else
-        %headVel = CF(vehicle(tmpIdx,10),VelPass,CFPara,simStep,leff);
+        %headVel = CF(vehicle(tmpIdx,10),VelPass,CFPara);
         headVel = CFPara(1);
-        if vehicle(tmpIdx,10)<=headVel*simStep
-            if currentTime>=emitTime
-                emitTime = emitTime + 1/capacity;
-            else
-                headVel = 0;
-            end
-        end
     end
     %[~,order_]sort(vehicle(theCell),4);
     %theCell = theCell(order_);
@@ -45,13 +36,51 @@ for i = 1:length(uniCIdx)
     else
         newVel(theCell) = headVel;
     end
-    newPos(theCell) = vehicle(theCell,4) + newVel(theCell)*simStep;
+    
     idx_f = theCell(vehicle(theCell,6)~=0);
     if ~isempty(idx_f)
-        newPos(idx_f) = min(newPos(idx_f), vehicle(idx_f,4) + vehicle(idx_f,10) - 1e-1);
+        newVel(idx_f) = min(newVel(idx_f), (vehicle(idx_f,4) + vehicle(idx_f,10) - leff)/simStep);%veh too fast
     end
+    newVel(vehicle(:,2)==2) = 0;%waiting vehs
+    
+    newPos(theCell) = vehicle(theCell,4) + newVel(theCell)*simStep;
+    if ~isempty(idx_f)
+        newVel(idx_f) = min(newVel(idx_f), (vehicle(idx_f,4) + vehicle(idx_f,10) - 0.1)/simStep);%veh too fast
+    end
+    
+    %ensure no vehs enter blocked lanes
+    prestopVIdx = find(newPos>=laneList(thisLane,3)+laneList(thisLane,2) & newPos<linkLen);
+    if ~isempty(prestopVIdx)
+        tmpval = linkGraph(thisLane(prestopVIdx)+length(linkGraph(:,1))*(nextLane(prestopVIdx)-1));
+%         stopVIdx = prestopVIdx(tmpval~=1);
+%         if ~isempty(stopVIdx)
+%             newVel(stopVIdx) = 0;%blocked lanes
+%             if ~isempty(idx_f)
+%                 newVel(idx_f) = min(newVel(idx_f), (vehicle(idx_f,4) + vehicle(idx_f,10) - leff)/simStep);%veh too fast
+%             end
+%             newPos(theCell) = vehicle(theCell,4) + newVel(theCell)*simStep;
+%         end
+        %pass this lane
+        passVIdx = prestopVIdx(tmpval==1);
+        if ~isempty(passVIdx)
+            if ~isempty(find(vehicle(passVIdx,3)==5)) || ~isempty(find(vehicle(passVIdx,3)==6))
+            end
+            vehicle(passVIdx,3) = laneList(nextLane(passVIdx),1);
+            for II = 1:length(passVIdx)
+                psv = passVIdx(II);
+                nextLane(psv) = GetNextLane(nextLane(psv),D{psv},linkGraph);
+            end
+            
+        end
+    end
+    
 end
+%debug
+oVehs = vehicle;
 vehicle(:,4:5)=[newPos newVel];
+IDX = crashTest(vehicle);
+if ~isempty(IDX)
+end
 
 %update timeBuffer
 vehicle(:,9)=max(0,vehicle(:,9)-1);
@@ -80,16 +109,20 @@ if ~isempty(arrivalIdx)
     vehicle=rmFlag(vehicle,arrivalIdx);
 end
 %remove arrival vehs
-vehicle(vehicle(:,2)==1,:)=[];
+vehicle(arrivalIdx,:)=[];
+D(arrivalIdx)=[];
+nextLane(arrivalIdx)=[];
 
 deadVehIdx = find(vehicle(:,8)&~vehicle(:,9));
 if ~isempty(deadVehIdx)
     vehicle=rmFlag(vehicle,deadVehIdx);
 end
 %remove dead virtualVehs
-vehicle(vehicle(:,8)&~vehicle(:,9),:)=[];
-
+vehicle(deadVehIdx,:)=[];
+D(deadVehIdx) = [];
+nextLane(deadVehIdx) = [];
 % arrivalIdx = find(newPos>=linkLen);
+
 % vehicle(arrivalIdx,2)=1;
 % deadVehIdx = find(vehicle(:,8)&~vehicle(:,9));
 % goneIdx = union(arrivalIdx,deadVehIdx);
@@ -97,17 +130,8 @@ vehicle(vehicle(:,8)&~vehicle(:,9),:)=[];
 %     vehicle = rmFlag(vehicle,deadVehIdx);
 % end
 
-
-
-
-
 %update space and headway
 fVehsIdx = find(vehicle(:,6)~=0);%follow = leading veh is not null
-%debug
-wrongVehs = setdiff(vehicle(fVehsIdx,6),vehicle(:,1));
-if ~isempty(wrongVehs)
-    disp(vehicle(YinX(wrongVehs,vehicle(:,6)),:));
-end
 lVehIdx = YinX(vehicle(fVehsIdx,6),vehicle(:,1));
 vehicle(fVehsIdx,10) = vehicle(lVehIdx,4)-vehicle(fVehsIdx,4);
 nonIdx = find(vehicle(:,6)==0);

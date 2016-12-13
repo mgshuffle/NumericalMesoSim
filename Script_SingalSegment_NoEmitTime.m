@@ -18,27 +18,18 @@
 % fmtMat = [repmat('%G,',1,length(header)-1) '%G\r\n'];
 % %-----------------------------output setting-----------------------------
 
-global emitTime
-global currentTime
-global capacity
-%---------------------parameters setting----------------------------
-mode = 1;
 
+%---------------------parameters setting----------------------------
 simStep = 0.1; %s
-duriation = 900; %s
+duriation = 3600; %s
 tBuff = 2; %s
 
-linkLen = 300;%m
+linkLen = 500;%m
 laneCount = 6;
 
-capacity = 0.5*laneCount;%veh/s
+ODList = [1 10000 0 3600];%1#ODID 2#demand 3#start 4#end
 
-emitTime = 0;
-ETStep = 10;
-
-ODList = [1 3000 0 1800; 1 5000 1800 3600];%1#ODID 2#demand 3#start 4#end
-
-vlim = [5 17];%initial vel limit
+vlim = [5 15];%initial vel limit
 VelPass = 20/3.6;%m/s
 DenMax = 1/6;%veh/meter
 leff = 6;%m
@@ -55,25 +46,13 @@ patchID = 1;
 vehCount = 0;
 frameBuff = ceil(tBuff/simStep);
 
-ETClock = ETStep;
-emitVCount = 0;
-
-if mode == 1
 %get emitTable
-load('emitTable')%format: #1_time #2_vel(m/s) #3_laneID
-load('vehicle')
-vehCount = length(vehicle(:,1));
-else
-    %get emitTable
-    emitTable = emitTableGeneraterR(ODList,vlim,laneCount,simStep);
-end
+%load('emitTable')%format: #1_time #2_vel(m/s) #3_laneID
+emitTable = emitTableGenerater(ODList,vlim,laneCount);
 %---------------------------initial-----------------------------------
 
 
-
-
 for i = 0:ceil(duriation/simStep)%frame loop
-    currentTime = i*simStep;
     %
     while(~isempty(emitTable) && i*simStep>=emitTable(1,1))
         
@@ -85,15 +64,10 @@ for i = 0:ceil(duriation/simStep)%frame loop
                 newVeh = [];
                 vehCount = vehCount - 1;
             else
-                emitVCount = emitVCount + 1;
                 vehicle(lastVehIdx,7) = vehCount;
                 newVeh = [vehCount 0 emitTable(1,3) 0 emitTable(1,2) ...
                     vehicle(lastVehIdx,1) 0 0 0 vehicle(lastVehIdx,4) vehicle(lastVehIdx,4)/emitTable(1,2)];
             end
-%             emitVCount = emitVCount + 1;
-%             vehicle(lastVehIdx,7) = vehCount;
-%             newVeh = [vehCount 0 emitTable(1,3) 0 emitTable(1,2) ...
-%                       vehicle(lastVehIdx,1) 0 0 0 vehicle(lastVehIdx,4) vehicle(lastVehIdx,4)/emitTable(1,2)];
         else%leading VEH GONE ALREADY
             newVeh = [vehCount 0 emitTable(1,3) 0 emitTable(1,2) ...
                 0 0 0 0 linkLen linkLen/emitTable(1,2)];
@@ -104,12 +78,6 @@ for i = 0:ceil(duriation/simStep)%frame loop
         emitTable(1,:) = [];%remove veh emitted
     end
     
-    %reset emitTime
-    if currentTime>=ETClock
-        emitTime = i*simStep;
-        ETClock = ETClock + ETStep;
-    end
-    
     if ~isempty(vehicle)
         %
         [CellIdx,~,~,~]=CellCut(vehicle);
@@ -118,7 +86,7 @@ for i = 0:ceil(duriation/simStep)%frame loop
         %
         [CellIdx,~,~,~]=CellCut(vehicle);
         %
-        vehicle = MESO(vehicle,CellIdx,linkLen,simStep,VelPass);%move in a frame (movement from t=i to t=i+1)
+        vehicle = MESO_NoEmitTime(vehicle,CellIdx,linkLen,simStep,VelPass);%move in a frame (movement from t=i to t=i+1)
         
         %debug
         leading = vehicle(:,6);

@@ -4,6 +4,7 @@ function [vehicle,totVehCount] = LaneChange(vehicle,CellIdx,laneCount,frameBuff,
 %ForcedLCIdx = find(vehicle(:,))%forcedLC
 
 DenMax = 1/6;%veh/meter
+leff = 6;%m
 
 [uniCIdx,~] = unique(CellIdx);
 for k = 1:length(uniCIdx)
@@ -29,7 +30,7 @@ for k = 1:length(uniCIdx)
             idx_VehsR = idx_VehsR((vehicle(idx_VehsR,4)-head).*(vehicle(idx_VehsR,4)-tail)<=0);
             vehCountR = length(idx_VehsR);
         end
-        if vehCountL>vehCountR
+        if vehCountL<vehCountR
             firstTurn = -1;
             vehCount1 = vehCountL;
             vehCount2 = vehCountR;
@@ -50,7 +51,8 @@ for k = 1:length(uniCIdx)
                 error('too short');
             end
             Pr = max( 0, (thisVehCount-(vehCount1+1))/ceil((head-tail)*DenMax) );
-            if rand<Pr%Lane Changed
+            vehTgs = vehicle(vehicle(:,3)==theLaneID+firstTurn,:);
+            if rand<Pr && LeffTest(vehTgs, vehicle(LCIdx,:), leff)%Lane Changed
                 vehCount1 = vehCount1 + 1;
                 totVehCount = totVehCount + 1;
                 
@@ -91,7 +93,8 @@ for k = 1:length(uniCIdx)
                 
             else%trying the other Lane
                 Pr2 = max( 0, (thisVehCount-(vehCount2+1))/ceil((head-tail)*DenMax) );
-                if rand<Pr2%the other Lane Changed
+                vehTgs = vehicle(vehicle(:,3)==theLaneID-firstTurn,:);
+                if rand<Pr2 && LeffTest(vehTgs, vehicle(LCIdx,:), leff)%the other Lane Changed
                     vehCount2 = vehCount2 + 1;
                     totVehCount = totVehCount + 1;
                     
@@ -136,4 +139,30 @@ for k = 1:length(uniCIdx)
         end
     end
 end
+end
+
+function result = LeffTest(vehTgs, vehLC, leff)
+if isempty(vehTgs)
+    result = true;
+else
+    idx_tgs_front = find(vehTgs(:,4)>vehLC(4));
+    idx_tgs_rear = find(vehTgs(:,4)<=vehLC(4));
+    
+    if ~isempty(idx_tgs_front)
+        [~,idx_front] = min(vehTgs(idx_tgs_front,4));
+        a = vehTgs(idx_tgs_front(idx_front),4)-vehLC(4)>leff;
+    else
+        a = true;
+    end
+    
+    if ~isempty(idx_tgs_rear)
+        [~,idx_rear] = max(vehTgs(idx_tgs_rear,4));
+        b = vehLC(4)-vehTgs(idx_tgs_rear(idx_rear),4)>leff;
+    else
+        b = true;
+    end
+    
+    result = a&b;
+end
+
 end

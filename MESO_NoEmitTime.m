@@ -1,14 +1,9 @@
 %vehicle: #1_VID #2_State(arrived==1) #3_laneID #4_S #5_Vel #6_leading #7_following #8_type(virtual==1) #9_(adjust_time_)remain(>=0) #10_space #11_headway
-function vehicle = MESO(vehicle,CellIdx,linkLen,simStep,VelPass)
-
-global emitTime
-global currentTime
-global capacity
+function vehicle = MESO_NoEmitTime(vehicle,CellIdx,linkLen,simStep,VelPass)
 
 %SDFpara=[50/3.6,15.6946188969802/3.6,114.313208506104/1000,2.21680315505852,9.98014217655979];%i80-2
-%SDFpara=[50/3.6,0,114.313208506104/1000,2.21680315505852,9.98014217655979];%i80-2
-SDFpara = [17,0,0.180,1.8,5];
-CFPara=[17,91.44];
+SDFpara=[50/3.6,0,114.313208506104/1000,2.21680315505852,9.98014217655979];%i80-2
+CFPara=[50/3.6,180];
 leff = 6;
 
 %initial
@@ -26,17 +21,9 @@ for i = 1:length(uniCIdx)
     tailVel = SD(K,SDFpara);
     if vehicle(tmpIdx,6)~=0
         leadingIdx = find(vehicle(:,1)==vehicle(tmpIdx,6));
-        headVel = CF(vehicle(tmpIdx,10),vehicle(leadingIdx,5),CFPara,simStep,leff);
+        headVel = CF(vehicle(tmpIdx,10),vehicle(leadingIdx,5),CFPara);
     else
-        %headVel = CF(vehicle(tmpIdx,10),VelPass,CFPara,simStep,leff);
-        headVel = CFPara(1);
-        if vehicle(tmpIdx,10)<=headVel*simStep
-            if currentTime>=emitTime
-                emitTime = emitTime + 1/capacity;
-            else
-                headVel = 0;
-            end
-        end
+        headVel = CF(vehicle(tmpIdx,10),VelPass,CFPara);
     end
     %[~,order_]sort(vehicle(theCell),4);
     %theCell = theCell(order_);
@@ -48,7 +35,7 @@ for i = 1:length(uniCIdx)
     newPos(theCell) = vehicle(theCell,4) + newVel(theCell)*simStep;
     idx_f = theCell(vehicle(theCell,6)~=0);
     if ~isempty(idx_f)
-        newPos(idx_f) = min(newPos(idx_f), vehicle(idx_f,4) + vehicle(idx_f,10) - 1e-1);
+        newPos(idx_f) = min(newPos(idx_f), vehicle(idx_f,4) + vehicle(idx_f,10) - leff);
     end
 end
 vehicle(:,4:5)=[newPos newVel];
@@ -128,22 +115,8 @@ else
 end
 end
 
-% function Vf = CF(space,Vl,para)
-% VFree = para(1);
-% dUpper = para(2);
-% Vf=min(max((VFree-Vl)/dUpper*space+Vl,Vl),VFree);
-% end
-
-function Vf = CF(space,Vl,para,simStep,leff)
+function Vf = CF(space,Vl,para)
 VFree = para(1);
 dUpper = para(2);
-if space<=0.1
-    Vf = Vl;
-else
-    if space<dUpper
-        Vf = min(space/dUpper*(space-leff)/simStep + (1-space/dUpper)*Vl, 120/3.6);
-    else
-        Vf = VFree;
-    end
-end
+Vf=min(max((VFree-Vl)/dUpper*space+Vl,Vl),VFree);
 end
